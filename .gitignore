@@ -1,0 +1,6 @@
+# IntelliJ project files
+.idea
+
+# Result file
+bor.json
+bor.json.gz

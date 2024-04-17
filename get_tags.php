@@ -1,6 +1,8 @@
 <?php
 
 use Soneso\StellarSDK\StellarSDK;
+use Twig\Environment;
+use Twig\Loader\FilesystemLoader;
 
 require 'vendor/autoload.php';
 
@@ -44,8 +46,42 @@ $result = [
     'accounts' => $data,
 ];
 
+// JSON
+
 $fp = gzopen('bor-new.json.gz', 'w9');
 gzwrite($fp, json_encode($result, JSON_UNESCAPED_UNICODE));
 gzclose($fp);
 
 rename('bor-new.json.gz', 'bor.json.gz');
+
+// HTML
+
+foreach ($result['accounts'] as $account => $datum) {
+    if (!array_key_exists('tags', $datum)) {
+        continue;
+    }
+    foreach ($datum['tags'] as $tag => $accounts) {
+        foreach ($accounts as $acc) {
+            if (!array_key_exists($acc, $result['accounts'])) {
+                $result['accounts'][$acc] = [];
+            }
+            if (!array_key_exists('income', $result['accounts'][$acc])) {
+                $result['accounts'][$acc]['income'] = [];
+            }
+            if (!array_key_exists($tag, $result['accounts'][$acc]['income'])) {
+                $result['accounts'][$acc]['income'][$tag] = [];
+            }
+            $result['accounts'][$acc]['income'][$tag][] = $account;
+        }
+    }
+}
+
+$Twig = new Environment(new FilesystemLoader(__DIR__ . '/templates'), [
+//    'cache' => 'twig_cache',
+]);
+$Twig->addExtension(new \MTLA\TwigAppExtension($result));
+$Template = $Twig->load('simple_html.twig');
+$fp = gzopen('bor-new.html.gz', 'w9');
+gzwrite($fp, $Template->render($result));
+gzclose($fp);
+rename('bor-new.html.gz', 'bor.html.gz');

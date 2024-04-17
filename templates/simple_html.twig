@@ -1,0 +1,85 @@
+<html lang="en">
+<head>
+    <title>BoR HTML viewer</title>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <style>
+        body {
+            font-family: sans-serif;
+        }
+        a {
+            text-decoration: none;
+        }
+        a:hover {
+            text-decoration: underline;
+        }
+
+        .acc {
+            font-family: monospace;
+        }
+
+        @media (prefers-color-scheme: dark) {
+            body {
+                color: #e3e3e3;
+                background-color: #282828;
+            }
+            a {
+                color: #7cacf8;
+            }
+            a:visited {
+                color: #bd86de;
+            }
+        }
+    </style>
+</head>
+
+<body>
+
+<h1>BoR HTML viewer</h1>
+<p>Created: {{ createDate }}</p>
+
+{#<!-- <p>Table of Contents: {% for account_id, data in accounts %}<a href='#account_{{ account_id }}'>{{ account_id|short_account }}</a> {% endfor %}</p> -->#}
+
+{% for account_id, data in accounts %}
+<h2 id='account_{{ account_id }}'>Account: {{ account_id|html_account }}</h2>
+
+    {% if data.profile %}
+    <h3>📇 Profile</h3>
+    <dl>
+    {% for item_name, values in data.profile %}
+        <dt>{{ item_name }}</dt>
+        {% for value in values %}
+            <dd>{{ value|escape }}</dd>
+        {% endfor %}
+    {% endfor %}
+    </dl>
+    {% endif %}
+
+    {% if data.income %}
+    <h3>⬇️ Income tags</h3>
+    <dl>
+    {% for item_name, values in data.income %}
+        <dt>{{ item_name|escape }}</dt>
+        {% for value in values %}
+            <dd>{{ value|html_account }}</dd>
+        {% endfor %}
+    {% endfor %}
+    </dl>
+    {% endif %}
+
+    {% if data.tags %}
+    <h3>⬆️ Outcome tags</h3>
+    <dl>
+    {% for item_name, values in data.tags %}
+        <dt>{{ item_name|escape }}</dt>
+        {% for value in values %}
+            <dd>{{ value|html_account }}</dd>
+        {% endfor %}
+    {% endfor %}
+    </dl>
+    {% endif %}
+
+{% endfor %}
+
+</body>
+</html>

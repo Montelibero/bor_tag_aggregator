@@ -22,6 +22,21 @@ class CollectTags
     private array $accounts = [];
     private array $balance_tokens = [];
 
+    public array $sort_tags_example = [
+        'Signer',
+        'A', 'B', 'C', 'D',
+        'Spouse', 'Love', 'OneFamily', 'Guardian', 'Ward', 'Sympathy', 'Divorce',
+        'Employer', 'Employee', 'Contractor', 'Client', 'Partnership', 'Collaboration',
+        'Owner', 'OwnershipFull', 'OwnerMajority', 'OwnershipMajority', 'OwnerMinority',
+        'FactionMember', 'WelcomeGuest',
+    ];
+    public array $sort_profile_example = [
+        'Name',
+        'About',
+        'Website',
+    ];
+
+
     public function __construct(StellarSDK $Stellar)
     {
         $this->Stellar = $Stellar;
@@ -171,6 +186,8 @@ class CollectTags
             return;
         }
 
+        $profile = $this->getProfile($AccountResponse);
+
         $balances = $this->getBalances($AccountResponse);
 
         $tags = $this->getTags($AccountResponse);
@@ -179,10 +196,16 @@ class CollectTags
             $tags['Signer'] = $signers;
         }
 
-        $this->accounts[$account_id] = [
-            'balances' => $balances,
-            'tags' => $tags,
-        ];
+        $result = [];
+        if ($profile) {
+            $result['profile'] = $profile;
+        }
+        $result['balances'] = $balances;
+        if ($tags) {
+            $result['tags'] = $tags;
+        }
+
+        $this->accounts[$account_id] = $result;
     }
 
     private function getBalances(AccountResponse $AccountResponse): array
@@ -203,6 +226,34 @@ class CollectTags
         }
 
         return $balances;
+    }
+
+    private function getProfile(AccountResponse $AccountResponse): array
+    {
+        $profile = [];
+        $profile_tags = ['Name', 'About', 'Website'];
+        $Data = $AccountResponse->getData();
+        foreach ($Data->getKeys() as $key) {
+            $value = trim($Data->get($key));
+            if ($value === '') {
+                continue;
+            }
+
+            $key = preg_replace('/\s?\d+\Z/', '', $key);
+
+            if (!in_array($key, $profile_tags)) {
+                continue;
+            }
+
+            if (!array_key_exists($key, $profile)) {
+                $profile[$key] = [];
+            }
+            $profile[$key][] = $value;
+        }
+
+        $this->semantic_sort_keys($profile, $this->sort_profile_example);
+
+        return $profile;
     }
 
     private function getTags(AccountResponse $AccountResponse): array
@@ -232,6 +283,8 @@ class CollectTags
             $tags[$key][] = $value;
         }
 
+        $this->semantic_sort_keys($tags, $this->sort_tags_example);
+
         return $tags;
     }
 
@@ -257,8 +310,12 @@ class CollectTags
     private function processData(): array
     {
         foreach ($this->accounts as & $data) {
-            if ($data['tags']) {
+            if (array_key_exists('tags', $data) && $data['tags']) {
                 $data['has_tag_out'] = true;
+            }
+
+            if (!array_key_exists('tags', $data)) {
+                continue;
             }
 
             foreach ($data['tags'] as $items) {
@@ -277,12 +334,43 @@ class CollectTags
                 continue;
             }
 
-            $result[$id] = [
-                'tags' => $data['tags'],
-                'balances' => $data['balances'],
-            ];
+            $result_data = [];
+            if (array_key_exists('profile', $data) && $data['profile']) {
+                $result_data['profile'] = $data['profile'];
+            }
+            $result_data['balances'] = $data['balances'];
+            if (array_key_exists('tags', $data) && $data['tags']) {
+                $result_data['tags'] = $data['tags'];
+            }
+
+            $result[$id] = $result_data;
         }
 
         return $result;
+    }
+
+    public function semantic_sort_keys(array & $data, array $sort_example): void
+    {
+        uksort($data, function($a, $b) use ($sort_example) {
+            $indexA = array_search($a, $sort_example);
+            $indexB = array_search($b, $sort_example);
+
+            // Если оба ключа есть в массиве сортировки
+            if ($indexA !== false && $indexB !== false) {
+                return $indexA - $indexB;
+            }
+            // Если ключ A в массиве сортировки, а B нет
+            elseif ($indexA !== false) {
+                return -1;
+            }
+            // Если ключ B в массиве сортировки, а A нет
+            elseif ($indexB !== false) {
+                return 1;
+            }
+            // Если ни один из ключей не в массиве сортировки, сортируем их по алфавиту
+            else {
+                return $a <=> $b;
+            }
+        });
     }
 }

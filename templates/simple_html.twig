@@ -1,6 +1,6 @@
 <html lang="en">
 <head>
-    <title>BoR HTML viewer</title>
+    <title>BSN HTML viewer</title>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <style>
@@ -35,10 +35,8 @@
 
 <body>
 
-<h1>BoR HTML viewer</h1>
+<h1>Blockchain Social Network<br>Simple HTML viewer</h1>
 <p>Created: {{ createDate }}</p>
-
-{#<!-- <p>Table of Contents: {% for account_id, data in accounts %}<a href='#account_{{ account_id }}'>{{ account_id|short_account }}</a> {% endfor %}</p> -->#}
 
 {% for account_id, data in accounts %}
 <h2 id='account_{{ account_id }}'>Account: {{ account_id|html_account }}</h2>

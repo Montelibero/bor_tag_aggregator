@@ -48,11 +48,11 @@ $result = [
 
 // JSON
 
-$fp = gzopen('bor-new.json.gz', 'w9');
+$fp = gzopen('bsn-new.json.gz', 'w9');
 gzwrite($fp, json_encode($result, JSON_UNESCAPED_UNICODE));
 gzclose($fp);
 
-rename('bor-new.json.gz', 'bor.json.gz');
+rename('bsn-new.json.gz', 'bsn.json.gz');
 
 // HTML
 
@@ -81,7 +81,7 @@ $Twig = new Environment(new FilesystemLoader(__DIR__ . '/templates'), [
 ]);
 $Twig->addExtension(new \MTLA\TwigAppExtension($result));
 $Template = $Twig->load('simple_html.twig');
-$fp = gzopen('bor-new.html.gz', 'w9');
+$fp = gzopen('bsn-new.html.gz', 'w9');
 gzwrite($fp, $Template->render($result));
 gzclose($fp);
-rename('bor-new.html.gz', 'bor.html.gz');
+rename('bsn-new.html.gz', 'bsn.html.gz');

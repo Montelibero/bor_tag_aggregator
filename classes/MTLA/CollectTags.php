@@ -49,7 +49,7 @@ class CollectTags
 
     public function addSource(string $code, string $issuer): void
     {
-        if (!$this->validateStellarAccountIdFormat($issuer)) {
+        if (!self::validateStellarAccountIdFormat($issuer)) {
             throw new RuntimeException('The issuer not a valid stellar account: ' . $issuer);
         }
 
@@ -67,7 +67,7 @@ class CollectTags
     public function addBalanceToken(string $token): void
     {
         [, $issuer] = explode('-', $token);
-        if (!$this->validateStellarAccountIdFormat($issuer)) {
+        if (!self::validateStellarAccountIdFormat($issuer)) {
             throw new RuntimeException('The issuer not a valid stellar account: ' . $issuer);
         }
 
@@ -169,13 +169,13 @@ class CollectTags
 
     //endregion
 
-    private function validateStellarAccountIdFormat(?string $account_id): bool
+    public static function validateStellarAccountIdFormat(?string $account_id): bool
     {
         if (!$account_id) {
             return false;
         }
 
-        return preg_match('/\AG[A-Z2-7]{55}\Z/', $account_id);
+        return preg_match('/^G[A-Z2-7]{55}$/', $account_id);
     }
 
     private function processStellarAccount(AccountResponse $AccountResponse): void
@@ -264,15 +264,20 @@ class CollectTags
         $Data = $AccountResponse->getData();
         foreach ($Data->getKeys() as $key) {
             $value = $Data->get($key);
-            if (!$this->validateStellarAccountIdFormat($value)) {
+            if (!self::validateStellarAccountIdFormat($value)) {
                 continue;
             }
             if ($value === $account_id) {
                 continue;
             }
 
-            $key = preg_replace('/\s?\d+\Z/', '', $key);
+            if (!preg_match('/^\s*(?<tag>[a-z0-9]+?)\s*(:\s*(?<extra>.+?))?\s*\d*\s*$/i', $key, $m)) {
+                continue;
+            }
 
+            $key = $m['tag'] . (isset($m['extra']) ? ':' . $m['extra'] : '');
+
+            // Reserved
             if ($key === 'Signer') {
                 continue;
             }
@@ -280,6 +285,7 @@ class CollectTags
             if (!array_key_exists($key, $tags)) {
                 $tags[$key] = [];
             }
+
             $tags[$key][] = $value;
         }
 
@@ -298,7 +304,7 @@ class CollectTags
             if ($key === $AccountResponse->getAccountId()) {
                 continue;
             }
-            if (!$this->validateStellarAccountIdFormat($key)) {
+            if (!self::validateStellarAccountIdFormat($key)) {
                 continue;
             }
             $co_signers[] = $key;

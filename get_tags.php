@@ -55,7 +55,6 @@ gzclose($fp);
 rename('bsn-new.json.gz', 'bsn.json.gz');
 
 // HTML
-
 foreach ($result['accounts'] as $account => $datum) {
     if (!array_key_exists('tags', $datum)) {
         continue;
@@ -73,6 +72,12 @@ foreach ($result['accounts'] as $account => $datum) {
             }
             $result['accounts'][$acc]['income'][$tag][] = $account;
         }
+    }
+}
+// Осортировать входящие теги так же, как сортированы исходящие
+foreach ($result['accounts'] as $account => & $datum) {
+    if (array_key_exists('income', $datum)) {
+        $CollectTags->semantic_sort_keys($datum['income'], $CollectTags->sort_tags_example);
     }
 }
 

@@ -46,15 +46,16 @@ $result = [
     'accounts' => $data,
 ];
 
-// JSON
+// JSON, только базовые данные, для всех
+file_put_contents('bsn-new.json', json_encode($result, JSON_UNESCAPED_UNICODE));
+rename('bsn-new.json', 'bsn.json');
+file_put_contents('bsn-new.json,gz', gzencode(json_encode($result, JSON_UNESCAPED_UNICODE), 9));
+rename('bsn-new.json,gz', 'bsn.json.gz');
 
-$fp = gzopen('bsn-new.json.gz', 'w9');
-gzwrite($fp, json_encode($result, JSON_UNESCAPED_UNICODE));
-gzclose($fp);
-
-rename('bsn-new.json.gz', 'bsn.json.gz');
-
+// Тут уже красота и отсебятина
 // HTML
+
+// Входящие теги
 foreach ($result['accounts'] as $account => $datum) {
     if (!array_key_exists('tags', $datum)) {
         continue;
@@ -74,12 +75,104 @@ foreach ($result['accounts'] as $account => $datum) {
         }
     }
 }
-// Осортировать входящие теги так же, как сортированы исходящие
+// Отсортировать входящие теги так же, как сортированы исходящие
 foreach ($result['accounts'] as $account => & $datum) {
     if (array_key_exists('income', $datum)) {
         $CollectTags->semantic_sort_keys($datum['income'], $CollectTags->sort_tags_example);
     }
 }
+// Level
+$mtla_accounts = [
+    'GCNVDZIHGX473FEI7IXCUAEXUJ4BGCKEMHF36VYP5EMS7PX2QBLAMTLA',
+    'GDGC46H4MQKRW3TZTNCWUU6R2C7IPXGN7HQLZBJTNQO6TW7ZOS6MSECR',
+];
+foreach ($result['accounts']  as $account => & $datum) {
+    if (in_array($account, $mtla_accounts, true)) {
+        $datum['relation'] = [
+            'type' => 'mtlap',
+            'level' => 5,
+        ];
+        continue;
+    }
+
+    if (!array_key_exists('balances', $datum)) {
+        continue;
+    }
+
+    if (array_key_exists('MTLAP', $datum['balances']) && (int) $datum['balances']['MTLAP']) {
+        $datum['relation'] = [
+            'type' => 'mtlap',
+            'level' => intval($datum['balances']['MTLAP']),
+        ];
+    } else if (array_key_exists('MTLAC', $datum['balances']) && (int) $datum['balances']['MTLAC']) {
+        $datum['relation'] = [
+            'type' => 'mtlac',
+            'level' => intval($datum['balances']['MTLAC']),
+        ];
+    }
+}
+// Inherited level
+foreach ($result['accounts']  as $account => & $datum) {
+    if (
+        array_key_exists('relation', $datum)
+        || !array_key_exists('tags', $datum)
+        || !array_key_exists('Owner', $datum['tags'])
+        || count($datum['tags']['Owner']) !== 1
+    ) {
+        continue;
+    }
+
+    $owner_id = $datum['tags']['Owner'][0];
+
+    if (
+        !array_key_exists($owner_id, $result['accounts'])
+        || !array_key_exists('relation', $result['accounts'][$owner_id])
+        || !array_key_exists('tags', $result['accounts'][$owner_id])
+        || !array_key_exists('OwnershipFull', $result['accounts'][$owner_id]['tags'])
+        || !in_array($account, $result['accounts'][$owner_id]['tags']['OwnershipFull'], true)
+
+    ) {
+        continue;
+    }
+
+    $datum['relation'] = $result['accounts'][$owner_id]['relation'];
+    $datum['relation']['inherited'] = true;
+}
+// Second level
+$good_tags = $CollectTags->sort_tags_example;
+foreach ($result['accounts']  as $account => & $datum) {
+    if (
+        array_key_exists('relation', $datum)
+        || !array_key_exists('income', $datum)
+    ) {
+        continue;
+    }
+
+    foreach ($datum['income'] as $tag_name => $taggers) {
+        if (!in_array($tag_name, $good_tags, true)) {
+            continue;
+        }
+
+        foreach ($taggers as $tagger) {
+            if (
+                array_key_exists('relation', $result['accounts'][$tagger])
+                && $result['accounts'][$tagger]['relation']['type'] !== 'second'
+            ) {
+                $datum['relation'] = [
+                    'type' => 'second',
+                ];
+                break 2;
+            }
+        }
+    }
+
+}
+
+file_put_contents(
+    'bsn-extra-new.json,gz',
+    gzencode(json_encode($result, JSON_UNESCAPED_UNICODE), 9)
+);
+rename('bsn-extra-new.json,gz', 'bsn-extra.json,gz');
 
 $Twig = new Environment(new FilesystemLoader(__DIR__ . '/templates'), [
 //    'cache' => 'twig_cache',

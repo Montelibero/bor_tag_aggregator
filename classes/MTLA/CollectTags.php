@@ -13,6 +13,8 @@ use Soneso\StellarSDK\StellarSDK;
 
 class CollectTags
 {
+    const SHA256_HASH_REGEX = '/^[a-f0-9]{64}$/';
+
     private StellarSDK $Stellar;
     private Closure $logger;
     private bool $debug_mode = false;
@@ -178,6 +180,15 @@ class CollectTags
         return preg_match('/^G[A-Z2-7]{55}$/', $account_id);
     }
 
+    public static function validateSignature(?string $string): bool
+    {
+        if (!$string) {
+            return false;
+        }
+
+        return preg_match(self::SHA256_HASH_REGEX, $string);
+    }
+
     private function processStellarAccount(AccountResponse $AccountResponse): void
     {
         $account_id = $AccountResponse->getAccountId();
@@ -192,6 +203,8 @@ class CollectTags
 
         $tags = $this->getTags($AccountResponse);
 
+        $signatures = $this->getSignatures($AccountResponse);
+
         if ($signers = $this->getSigners($AccountResponse)) {
             $tags['Signer'] = $signers;
         }
@@ -203,6 +216,9 @@ class CollectTags
         $result['balances'] = $balances;
         if ($tags) {
             $result['tags'] = $tags;
+        }
+        if ($signatures) {
+            $result['signatures'] = $signatures;
         }
 
         $this->accounts[$account_id] = $result;
@@ -267,11 +283,12 @@ class CollectTags
             if (!self::validateStellarAccountIdFormat($value)) {
                 continue;
             }
+            // TODO: осторожно удалить
             if ($value === $account_id) {
                 continue;
             }
 
-            if (!preg_match('/^\s*(?<tag>[a-z0-9]+?)\s*(:\s*(?<extra>.+?))?\s*\d*\s*$/i', $key, $m)) {
+            if (!preg_match('/^\s*(?<tag>[a-z0-9_]+?)\s*(:\s*(?<extra>[a-z0-9_]+?))?\s*\d*\s*$/i', $key, $m)) {
                 continue;
             }
 
@@ -292,6 +309,26 @@ class CollectTags
         $this->semantic_sort_keys($tags, $this->sort_tags_example);
 
         return $tags;
+    }
+
+    private function getSignatures(AccountResponse $AccountResponse): array
+    {
+        $signatures = [];
+        $Data = $AccountResponse->getData();
+        foreach ($Data->getKeys() as $key) {
+            $value = strtolower($Data->get($key));
+            if (!self::validateSignature($value)) {
+                continue;
+            }
+
+            if (array_key_exists($value, $signatures)) {
+                continue; // Double
+            }
+
+            $signatures[$value] = $key;
+        }
+
+        return $signatures;
     }
 
     private function getSigners(AccountResponse $AccountResponse): array
@@ -336,7 +373,11 @@ class CollectTags
 
         $result = [];
         foreach ($this->accounts as $id => $data) {
-            if (!array_key_exists('has_tag_out', $data) && !array_key_exists('has_tag_in', $data)) {
+            if (!array_key_exists('has_tag_out', $data)
+                && !array_key_exists('has_tag_in', $data)
+                && !(array_key_exists('MTLAP', $data['balances']) && $data['balances']['MTLAP'] > 0)
+                && !(array_key_exists('MTLAC', $data['balances']) && $data['balances']['MTLAC'] > 0)
+            ) {
                 continue;
             }
 
@@ -347,6 +388,9 @@ class CollectTags
             $result_data['balances'] = $data['balances'];
             if (array_key_exists('tags', $data) && $data['tags']) {
                 $result_data['tags'] = $data['tags'];
+            }
+            if (array_key_exists('signatures', $data) && $data['signatures']) {
+                $result_data['signatures'] = $data['signatures'];
             }
 
             $result[$id] = $result_data;

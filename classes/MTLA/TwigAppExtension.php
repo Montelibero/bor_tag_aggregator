@@ -36,24 +36,19 @@ class TwigAppExtension extends AbstractExtension
         $short_name = $this->shortAccount($account);
 
         $link = "https://stellar.expert/explorer/public/account/";
-        $mtla_accounts = [
-            'GCNVDZIHGX473FEI7IXCUAEXUJ4BGCKEMHF36VYP5EMS7PX2QBLAMTLA',
-            'GDGC46H4MQKRW3TZTNCWUU6R2C7IPXGN7HQLZBJTNQO6TW7ZOS6MSECR',
-        ];
 
-        $stars = '';
-        if (array_key_exists($account, $this->data['accounts']) && array_key_exists('balances', $this->data['accounts'][$account])) {
-            $balances = $this->data['accounts'][$account]['balances'];
-            if (in_array($account, $mtla_accounts, true)) {
-                $stars = ' ' . str_repeat('🌟', 5);
-            } else if (array_key_exists('MTLAP', $balances) && $balances['MTLAP']) {
-                $stars = ' ' . str_repeat('⭐', (int)$balances['MTLAP']);
-            } else if (array_key_exists('MTLAC', $balances) && $balances['MTLAC']) {
-                $stars = ' ' . str_repeat('🌟', (int)$balances['MTLAC']);
-            }
+        $relation = [
+            'type' => 'noname',
+        ];
+        if (array_key_exists($account, $this->data['accounts'])
+            && array_key_exists('relation', $this->data['accounts'][$account])
+        ) {
+            $relation = $this->data['accounts'][$account]['relation'];
         }
+
         $name = '';
-        if ($stars
+        if (
+            $relation['type'] !== 'noname'
             && array_key_exists($account, $this->data['accounts'])
             && array_key_exists('profile', $this->data['accounts'][$account])
             && array_key_exists('Name', $this->data['accounts'][$account]['profile'])
@@ -61,7 +56,17 @@ class TwigAppExtension extends AbstractExtension
             $name = ' [' . htmlspecialchars($this->data['accounts'][$account]['profile']['Name'][0]) . ']';
         }
 
-        return "<span class='acc'><a href='#account_$account'>#</a> <a href=\"" . htmlspecialchars($link . $account) . "\">" . $short_name . $name . $stars . "</a></span>";
+        if ($relation['type'] === 'mtlap') {
+            $icons = ' ' . str_repeat('⭐', $relation['level']);
+        } else if ($relation['type'] === 'mtlac') {
+            $icons = ' ' . str_repeat('🌟', $relation['level']);
+        } else if ($relation['type'] === 'second') {
+            $icons = ' 🔗';
+        } else {
+            $icons = ' 👻';
+        }
+
+        return "<span class='acc'><a href='#account_$account'>#</a> <a href=\"" . htmlspecialchars($link . $account) . "\">" . $short_name . $name . $icons . "</a></span>";
     }
 
 }

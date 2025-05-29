@@ -1,0 +1,11 @@
+services:
+  crawler:
+    build:
+      context: ./crawler
+    volumes:
+      - bsn_shared_data:/data/public
+    restart: "no"  # так как он запускается вручную
+
+volumes:
+  bsn_shared_data:
+    external: true

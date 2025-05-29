@@ -6,9 +6,9 @@
     "ext-curl": "*",
     "ext-soap": "*",
     "ext-zlib": "*",
-    "soneso/stellar-php-sdk": "1.3.0",
+    "soneso/stellar-php-sdk": "^1.7.1",
     "vlucas/phpdotenv": "5.4",
-    "twig/twig": "^3.8"
+    "twig/twig": "^3.21"
   }
 ,
   "require-dev": {

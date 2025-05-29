@@ -12,6 +12,8 @@ $CollectTags = new MTLA\CollectTags(
 
 $CollectTags->isDebugMode(false);
 
+chdir('/data/public/');
+
 $tokens = [
     'Agora-GBGGX7QD3JCPFKOJTLBRAFU3SIME3WSNDXETWI63EDCORLBB6HIP2CRR',
     'BTCMTL-GACKTN5DAZGWXRWB2WLM6OPBDHAMT6SJNGLJZPQMEZBUR4JUGBX2UK7V',

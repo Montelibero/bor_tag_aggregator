@@ -15,7 +15,6 @@ WORKDIR /usr/src/crawler
 
 COPY . .
 COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
-COPY crontab.txt /etc/crontabs/root
 RUN composer install --no-dev --optimize-autoloader
 
 CMD ["sh", "init.sh"]
